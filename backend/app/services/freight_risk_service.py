@@ -11,21 +11,21 @@ async def compute_risk_for_system(system: DistributedSystem) -> dict:
     if system.status == SystemStatus.offline:
         delay_prob = 0.85
         confidence = 0.92
-        risk_factor = "System offline - no telemetry available"
-        action = "Activate manual tracking protocol; notify dispatch supervisors immediately"
+        risk_factor = f"System offline — telemetry gap exceeds alerting threshold; corridor visibility lost"
+        action = "Escalate to on-call SRE (P1). Activate manual car-location protocol via dispatch radio. Open incident bridge."
     elif system.status == SystemStatus.degraded:
         base = 0.45
         latency_penalty = min(0.30, system.latency_ms / 1000.0)
         delay_prob = round(base + latency_penalty, 2)
         confidence = 0.78
-        risk_factor = f"Degraded system health with elevated latency ({system.latency_ms:.0f}ms)"
-        action = "Schedule maintenance window; increase monitoring frequency to every 60 seconds"
+        risk_factor = f"System degraded — p95 latency {system.latency_ms:.0f}ms exceeds SLO; downstream event propagation impaired"
+        action = "Page on-call (P2). Throttle non-critical write traffic. Schedule emergency maintenance window within 4-hour RTO target."
     else:
         latency_penalty = min(0.15, system.latency_ms / 2000.0)
         delay_prob = round(0.08 + latency_penalty, 2)
         confidence = 0.95
-        risk_factor = "Normal operating conditions with minor latency variance"
-        action = "No action required; continue standard monitoring cadence"
+        risk_factor = f"System healthy — latency {system.latency_ms:.0f}ms within SLO bounds; telemetry pipeline nominal"
+        action = "No escalation required. Continue standard 5-minute health-check cadence per runbook RL-OPS-001."
 
     return {
         "delay_probability": delay_prob,

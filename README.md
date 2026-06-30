@@ -1,22 +1,38 @@
 # Rail Logistics Control Plane
 
-A single-pane-of-glass operations management platform for distributed freight rail technology systems. Built to simulate the kind of internal tooling used by large-scale railroad logistics operations — covering system health, alerting, operational workflows, observability, audit logging, and freight movement risk assessment.
+A production-grade operations control plane for managing distributed freight rail technology infrastructure across cloud, edge, and data center environments. Simulates the internal tooling used by large-scale railroad technology organizations — where thousands of microservices, IoT edge gateways, stream processors, and batch ETL workers must be monitored, alerted on, and operated 24/7 across geographically distributed corridors.
 
-> **Simulated data only.** No real railroad systems, BNSF data, or external APIs are used.
+> **Simulated data only.** No real railroad systems, proprietary rail data, or external carrier APIs are used.
 
 ---
 
-## Why This Project Was Built
+## Engineering Context
 
-Modern freight railroads operate thousands of distributed systems — edge gateways at rail yards, cloud-based routing services, data center batch processors, telemetry collectors, and crew scheduling adapters. Managing the health, performance, and operational state of these systems at scale requires a unified control plane.
+Large freight rail operations run distributed systems across three tiers: **cloud** (routing engines, ML inference, REST/gRPC APIs), **edge** (yard gateways, IoT stream processors, protocol bridges at trackside), and **data center** (mainframe adapters, batch ETL workers, constraint-based routing). Failures in any tier directly affect car-location accuracy, crew scheduling, and on-time performance across thousands of miles of corridor.
 
-This project demonstrates:
-- Full-stack engineering with FastAPI + Next.js
-- Distributed systems modeling across cloud, edge, and data center environments
-- Real-time observability via WebSocket live updates
-- Role-based access control enforced at the API layer
-- Audit logging on every significant user action
-- Production-quality structure: typed schemas, middleware, async DB, Docker Compose
+This project was built to demonstrate the engineering depth required to design, build, and operate that kind of infrastructure:
+
+**Distributed systems design:**
+- Models 11 heterogeneous services across cloud, edge, and data center — each with distinct service types (Kafka consumer, gRPC-gateway, Flink stream processor, mainframe MQ adapter, CDC event publisher, constraint-based routing engine)
+- Tracks per-system heartbeat freshness, latency, version, and owning team — mirroring how a real service registry or CMDB is structured at scale
+- Real-time telemetry broadcast via WebSocket — simulating the event-streaming pattern used in distributed ops platforms
+
+**Secure, role-gated API design:**
+- JWT authentication with HS256, enforced via FastAPI dependency injection on every route
+- Three-tier RBAC (Admin / Operator / Viewer) — authorization checked server-side, not just in the UI
+- Immutable audit log written on every write action: login, alert state change, workflow approval, system update
+
+**Observability and SRE patterns:**
+- Metric field naming follows OpenTelemetry/Prometheus conventions (`latency_ms`, `error_rate`, `heartbeat_age_seconds`)
+- Alert model includes severity tiers (P0 critical → low), acknowledgement workflow, and resolution tracking — consistent with PagerDuty/OpsGenie data models
+- Ops workflow types mirror real runbook actions: `hotfix_deployment`, `tls_certificate_rotation`, `ml_model_promotion`, `routing_table_update`, `horizontal_scaling_event`
+- Rule-based freight risk engine scores delay probability per corridor based on system status and SLO breach severity
+
+**Production engineering:**
+- Async SQLAlchemy 2.0 with asyncpg — non-blocking DB I/O throughout
+- Structured JSON logging via structlog on every request (method, path, status, duration_ms, client_host)
+- Multi-stage Docker builds with `.dockerignore` — lean production images
+- 20 integration tests via pytest-asyncio + httpx AsyncClient against a real in-memory DB stack (no mocking)
 
 ---
 
@@ -251,11 +267,11 @@ The platform takes an OpenTelemetry-inspired approach without requiring a full P
 
 ## Resume Bullet Examples
 
-- Built a full-stack freight rail operations control plane with FastAPI, Next.js, PostgreSQL, and WebSockets; implemented JWT authentication, async SQLAlchemy, and role-based access control enforced at the API layer
-- Designed a real-time observability dashboard with live system health, latency trends, and alert volume charts using WebSocket broadcasts and Recharts
-- Implemented structured audit logging middleware capturing actor, action, resource, and metadata on every significant write operation across the platform
-- Modeled distributed systems inventory spanning cloud, edge, and data center environments with per-system heartbeat tracking, latency monitoring, and freight movement risk scoring
-- Containerized the full stack with Docker Compose including PostgreSQL health checks and multi-stage Next.js builds; added a pytest suite covering RBAC enforcement across all user roles
+- Designed and built a full-stack distributed systems control plane for freight rail operations, managing 11 heterogeneous microservices across cloud, edge, and data center tiers; implemented async FastAPI with SQLAlchemy 2.0 + asyncpg for non-blocking, high-concurrency API design
+- Architected a real-time observability layer with WebSocket event streaming, OpenTelemetry-inspired metric naming, per-system SLO tracking (latency, error rate, heartbeat freshness), and a live dashboard updating without polling — consistent with production monitoring patterns at operational scale
+- Implemented three-tier RBAC (Admin / Operator / Viewer) enforced via FastAPI dependency injection, with HS256 JWT authentication and an immutable audit log capturing actor, action, resource, and metadata on every write — login, alert acknowledgement, workflow approval, and system state change
+- Modeled a rule-based freight movement risk engine scoring delay probability per rail corridor from live system telemetry — offline systems trigger P1 escalation paths, degraded systems trigger P2 SLO-breach workflows, consistent with on-call runbook logic
+- Containerized the full stack (FastAPI + Next.js 14 + PostgreSQL 16) with Docker Compose, multi-stage builds, and Python-native health checks; wrote 20 integration tests with pytest-asyncio and httpx AsyncClient covering RBAC enforcement, audit log generation, and JWT token issuance against a real in-memory DB stack
 
 ---
 

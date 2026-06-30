@@ -58,7 +58,7 @@ export default function DashboardPage() {
   }, [router, loadData])
 
   return (
-    <AppShell title="Dashboard">
+    <AppShell title="Operations Dashboard">
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <Spinner size="lg" />
@@ -74,56 +74,56 @@ export default function DashboardPage() {
             <StatCard
               title="Total Systems"
               value={summary.total_systems}
-              subtitle="Registered distributed systems"
+              subtitle="Cloud · Edge · Data Center"
               icon={Server}
               colorClass="bg-blue-500/10 text-blue-400"
             />
             <StatCard
               title="Healthy Systems"
               value={summary.healthy_systems}
-              subtitle={`${summary.degraded_systems} degraded, ${summary.offline_systems} offline`}
+              subtitle={`${summary.degraded_systems} degraded · ${summary.offline_systems} offline`}
               icon={CheckCircle}
               colorClass="bg-green-500/10 text-green-400"
             />
             <StatCard
-              title="Critical Alerts"
+              title="P0 / P1 Alerts"
               value={summary.active_critical_alerts}
-              subtitle="Requires immediate attention"
+              subtitle="Critical alerts requiring immediate escalation"
               icon={Bell}
               colorClass="bg-red-500/10 text-red-400"
             />
             <StatCard
-              title="Avg Latency"
+              title="Fleet Avg Latency"
               value={`${summary.avg_latency_ms?.toFixed(0) ?? 0} ms`}
-              subtitle="Across all systems"
+              subtitle="p95 proxy across all registered systems"
               icon={Gauge}
               colorClass="bg-yellow-500/10 text-yellow-400"
             />
             <StatCard
-              title="Open Workflows"
+              title="Pending Approvals"
               value={summary.open_workflows}
-              subtitle="Pending approval or action"
+              subtitle="Ops workflows awaiting admin sign-off"
               icon={GitBranch}
               colorClass="bg-purple-500/10 text-purple-400"
             />
             <StatCard
-              title="Incidents"
+              title="Resolved Incidents"
               value={summary.incident_count}
-              subtitle="Active incident count"
+              subtitle="Closed in last 7 days"
               icon={Flame}
               colorClass="bg-orange-500/10 text-orange-400"
             />
             <StatCard
-              title="Degraded"
+              title="Degraded Systems"
               value={summary.degraded_systems}
-              subtitle="Systems in degraded state"
+              subtitle="SLO breach risk — elevated latency or errors"
               icon={AlertTriangle}
               colorClass="bg-yellow-500/10 text-yellow-400"
             />
             <StatCard
-              title="Offline"
+              title="Offline Systems"
               value={summary.offline_systems}
-              subtitle="Systems not responding"
+              subtitle="No heartbeat — telemetry gap active"
               icon={XCircle}
               colorClass="bg-red-500/10 text-red-400"
             />

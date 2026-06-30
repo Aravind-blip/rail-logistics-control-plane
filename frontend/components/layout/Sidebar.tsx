@@ -15,13 +15,13 @@ import {
 import { clsx } from 'clsx'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/systems', label: 'Systems', icon: Server },
-  { href: '/alerts', label: 'Alerts', icon: Bell },
-  { href: '/workflows', label: 'Workflows', icon: GitBranch },
-  { href: '/observability', label: 'Observability', icon: Activity },
+  { href: '/dashboard', label: 'Operations Dashboard', icon: LayoutDashboard },
+  { href: '/systems', label: 'Distributed Systems', icon: Server },
+  { href: '/alerts', label: 'Alerts & Incidents', icon: Bell },
+  { href: '/workflows', label: 'Ops Workflows', icon: GitBranch },
+  { href: '/observability', label: 'Telemetry & Metrics', icon: Activity },
   { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
-  { href: '/freight-risk', label: 'Freight Risk', icon: Train },
+  { href: '/freight-risk', label: 'Freight Risk Intel', icon: Train },
 ]
 
 export default function Sidebar() {
