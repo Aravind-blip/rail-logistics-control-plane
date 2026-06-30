@@ -24,47 +24,44 @@ This project demonstrates:
 
 ```mermaid
 graph TB
-    subgraph Client["Browser (Next.js :3000)"]
-        direction TB
-        Login[Login Page]
-        Dashboard[Dashboard]
-        Systems[Systems Inventory]
-        Alerts[Alerts Center]
-        Workflows[Workflows]
-        Observability[Observability]
-        AuditLogs[Audit Logs]
-        FreightRisk[Freight Risk]
+    subgraph Client["Browser — Next.js port 3000"]
+        Login["Login Page"]
+        Dashboard["Dashboard"]
+        Systems["Systems Inventory"]
+        Alerts["Alerts Center"]
+        Workflows["Workflows"]
+        Observability["Observability"]
+        AuditLogs["Audit Logs"]
+        FreightRisk["Freight Risk"]
     end
 
-    subgraph Backend["FastAPI Backend (:8000)"]
-        direction TB
-        AuthRouter[/api/auth]
-        SystemsRouter[/api/systems]
-        AlertsRouter[/api/alerts]
-        WorkflowsRouter[/api/workflows]
-        MetricsRouter[/api/metrics]
-        DashboardRouter[/api/dashboard]
-        AuditRouter[/api/audit-logs]
-        RiskRouter[/api/freight-risk]
-        WSEndpoint[/ws/live]
-
-        AuthMiddleware[JWT Auth Middleware]
-        RBACGuard[RBAC Role Guards]
-        AuditMiddleware[Audit Log Service]
+    subgraph Backend["FastAPI Backend — port 8000"]
+        AuthRouter["POST /api/auth/login"]
+        SystemsRouter["GET /api/systems"]
+        AlertsRouter["GET /api/alerts"]
+        WorkflowsRouter["GET /api/workflows"]
+        MetricsRouter["GET /api/metrics"]
+        DashboardRouter["GET /api/dashboard/summary"]
+        AuditRouter["GET /api/audit-logs"]
+        RiskRouter["GET /api/freight-risk"]
+        WSEndpoint["WS /ws/live"]
+        AuthMiddleware["JWT Auth Middleware"]
+        RBACGuard["RBAC Role Guards"]
+        AuditMiddleware["Audit Log Service"]
     end
 
     subgraph DB["PostgreSQL"]
-        Users[(users)]
-        SystemsTable[(distributed_systems)]
-        AlertsTable[(alerts)]
-        WorkflowsTable[(workflows)]
-        AuditTable[(audit_logs)]
-        MetricsTable[(system_metrics)]
-        RiskTable[(freight_risks)]
+        Users[("users")]
+        SystemsTable[("distributed_systems")]
+        AlertsTable[("alerts")]
+        WorkflowsTable[("workflows")]
+        AuditTable[("audit_logs")]
+        MetricsTable[("system_metrics")]
+        RiskTable[("freight_risks")]
     end
 
-    Client -->|HTTP REST + JWT| Backend
-    Client <-->|WebSocket| WSEndpoint
+    Client -->|"HTTP REST + JWT Bearer"| Backend
+    Client <-->|"WebSocket — live telemetry"| WSEndpoint
     Backend --> DB
     AuthRouter --> Users
     SystemsRouter --> SystemsTable
@@ -73,7 +70,7 @@ graph TB
     AuditMiddleware --> AuditTable
     MetricsRouter --> MetricsTable
     RiskRouter --> RiskTable
-    WSEndpoint -->|Broadcasts every 3s| Client
+    WSEndpoint -->|"Broadcasts every 3s"| Client
 ```
 
 ---
