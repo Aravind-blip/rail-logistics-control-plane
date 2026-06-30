@@ -33,6 +33,10 @@ This project was built to demonstrate the engineering depth required to design, 
 - Structured JSON logging via structlog on every request (method, path, status, duration_ms, client_host)
 - Multi-stage Docker builds with `.dockerignore` — lean production images
 - 20 integration tests via pytest-asyncio + httpx AsyncClient against a real in-memory DB stack (no mocking)
+- Global FastAPI exception handlers return structured JSON for both validation errors (field-level) and unhandled exceptions — no raw tracebacks exposed to clients
+- Pydantic v2 `field_validator` on all write schemas: non-blank string enforcement, max-length limits, allowed-value sets for workflow types, non-negative latency
+- Pagination (`limit`/`offset`) on all list endpoints; systems endpoint accepts `environment` and `status` filter params
+- `source_system_id` validated against the DB before alert creation — 422 with descriptive message on unknown system reference
 
 ---
 
@@ -95,18 +99,19 @@ graph TB
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS |
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS v4 |
 | Charts | Recharts |
-| UI Components | Custom components with Radix UI primitives |
+| UI Components | Custom component library — Toast, PageHeader, PageError, EmptyState, Card, Modal, Select, Spinner |
 | Backend | FastAPI, Python 3.11+ |
-| Database | PostgreSQL 16 (SQLite for local dev/tests) |
+| Database | PostgreSQL 16 (SQLite + aiosqlite for local dev/tests) |
 | ORM | SQLAlchemy 2.0 async |
-| Auth | JWT (python-jose), bcrypt (passlib) |
-| Validation | Pydantic v2 |
-| Logging | structlog (structured JSON) |
-| Real-time | WebSocket (native FastAPI + browser WebSocket) |
-| Testing | pytest, pytest-asyncio, httpx |
-| Infrastructure | Docker Compose |
+| Auth | JWT (python-jose, HS256), bcrypt (passlib) |
+| Validation | Pydantic v2 with `field_validator` |
+| Error handling | Global FastAPI exception handlers — structured JSON for validation errors and 500s |
+| Logging | structlog (structured JSON per request) |
+| Real-time | WebSocket (native FastAPI + browser WebSocket API) |
+| Testing | pytest, pytest-asyncio, httpx AsyncClient |
+| Infrastructure | Docker Compose with multi-stage builds and health checks |
 
 ---
 
@@ -201,7 +206,7 @@ Role-based access control is enforced at the API layer using FastAPI dependency 
 ### Systems
 | Method | Route | Description |
 |---|---|---|
-| GET | /api/systems | List all distributed systems |
+| GET | /api/systems | List systems — filter by `environment`, `status`; paginate with `limit`/`offset` |
 | GET | /api/systems/{id} | Get system by ID |
 | POST | /api/systems | Create system (admin) |
 | PATCH | /api/systems/{id} | Update system (admin) |
@@ -210,18 +215,18 @@ Role-based access control is enforced at the API layer using FastAPI dependency 
 ### Alerts
 | Method | Route | Description |
 |---|---|---|
-| GET | /api/alerts | List alerts (filter by severity, status) |
+| GET | /api/alerts | List alerts — filter by `severity`, `status`; paginate with `limit`/`offset` |
 | GET | /api/alerts/{id} | Get alert by ID |
-| POST | /api/alerts | Create alert (admin) |
+| POST | /api/alerts | Create alert (admin) — validates `source_system_id` against registered systems |
 | POST | /api/alerts/{id}/acknowledge | Acknowledge alert (operator+) |
 | POST | /api/alerts/{id}/resolve | Resolve alert (operator+) |
 
 ### Workflows
 | Method | Route | Description |
 |---|---|---|
-| GET | /api/workflows | List workflows |
+| GET | /api/workflows | List workflows — paginate with `limit`/`offset` |
 | GET | /api/workflows/{id} | Get workflow by ID |
-| POST | /api/workflows | Create workflow request (operator+) |
+| POST | /api/workflows | Create workflow request (operator+) — validates `workflow_type` against allowed set |
 | POST | /api/workflows/{id}/approve | Approve workflow (admin) |
 | POST | /api/workflows/{id}/reject | Reject workflow (admin) |
 
@@ -238,6 +243,24 @@ Role-based access control is enforced at the API layer using FastAPI dependency 
 | GET | /api/freight-risk | List freight movement risk items |
 | WS | /ws/live | Live system and alert updates |
 | GET | /health | Backend health check |
+
+---
+
+## Frontend Component Design
+
+The frontend uses a small in-house component library rather than pulling in a third-party component framework, keeping the dependency tree lean while demonstrating reusable design patterns:
+
+| Component | Purpose |
+|---|---|
+| `Toast` / `useToast` | Context-based notification system — replaces all `alert()` calls; success/error/warning variants with 5s auto-dismiss |
+| `PageHeader` | Consistent title, description, record count badge, and actions slot across every page |
+| `PageError` | Structured error display with optional Retry button — wired to the page's `load()` callback |
+| `EmptyState` | Centered icon + title + description for both "no data" and "no filter matches" states |
+| `Card` / `CardHeader` | Consistent dark surface with optional `padding={false}` for table-flush layouts |
+| `Modal` | Focus-trapped overlay for create/edit forms |
+| `Select` / `Spinner` / `Button` | Typed, themed base inputs reused across all pages |
+
+Every page follows the same render priority: `loading → error (with retry) → empty (context-aware) → data`. This eliminates raw error divs and `alert()` popups throughout the app.
 
 ---
 
@@ -258,8 +281,9 @@ The platform takes an OpenTelemetry-inspired approach without requiring a full P
 - Passwords are hashed with bcrypt (cost factor 12) — never stored in plaintext.
 - JWTs are signed with HS256 using a configurable `SECRET_KEY`. Tokens expire after 60 minutes by default.
 - CORS is restricted to explicitly configured origins.
-- All inputs are validated via Pydantic v2 schemas before reaching business logic.
+- All inputs are validated via Pydantic v2 schemas with `field_validator` before reaching business logic — empty strings, invalid enum values, and out-of-range numbers are rejected at the schema boundary.
 - Role checks use FastAPI dependency injection — routes cannot be called without the middleware chain executing.
+- Global exception handlers ensure unhandled errors return structured JSON without leaking stack traces to clients.
 - Audit logs record every write action with actor identity, resource type, resource ID, and a metadata snapshot.
 - The `.env.example` ships with placeholder secrets — never commit real credentials.
 
@@ -271,7 +295,9 @@ The platform takes an OpenTelemetry-inspired approach without requiring a full P
 - Architected a real-time observability layer with WebSocket event streaming, OpenTelemetry-inspired metric naming, per-system SLO tracking (latency, error rate, heartbeat freshness), and a live dashboard updating without polling — consistent with production monitoring patterns at operational scale
 - Implemented three-tier RBAC (Admin / Operator / Viewer) enforced via FastAPI dependency injection, with HS256 JWT authentication and an immutable audit log capturing actor, action, resource, and metadata on every write — login, alert acknowledgement, workflow approval, and system state change
 - Modeled a rule-based freight movement risk engine scoring delay probability per rail corridor from live system telemetry — offline systems trigger P1 escalation paths, degraded systems trigger P2 SLO-breach workflows, consistent with on-call runbook logic
-- Containerized the full stack (FastAPI + Next.js 14 + PostgreSQL 16) with Docker Compose, multi-stage builds, and Python-native health checks; wrote 20 integration tests with pytest-asyncio and httpx AsyncClient covering RBAC enforcement, audit log generation, and JWT token issuance against a real in-memory DB stack
+- Containerized the full stack (FastAPI + Next.js 16 + PostgreSQL 16) with Docker Compose, multi-stage builds, and Python-native health checks; wrote 20 integration tests with pytest-asyncio and httpx AsyncClient covering RBAC enforcement, audit log generation, and JWT token issuance against a real in-memory DB stack
+- Applied production-quality API hardening: global FastAPI exception handlers for structured error responses, Pydantic v2 `field_validator` chains enforcing non-blank strings/max-length/allowed enum sets on all write schemas, referential integrity validation before DB insert, and pagination with filter params on all list endpoints
+- Built a reusable frontend component library (Toast, PageHeader, PageError, EmptyState) establishing a consistent loading → error-with-retry → empty-state → data render pattern across all six application pages; replaced all `alert()` calls with a React Context toast system
 
 ---
 
