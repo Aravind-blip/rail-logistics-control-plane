@@ -10,7 +10,10 @@ import LatencyChart from '@/components/dashboard/LatencyChart'
 import Card, { CardHeader, CardTitle } from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import { format } from 'date-fns'
-import { RefreshCw } from 'lucide-react'
+import PageError from '@/components/ui/PageError'
+import PageHeader from '@/components/ui/PageHeader'
+import EmptyState from '@/components/ui/EmptyState'
+import { RefreshCw, Activity } from 'lucide-react'
 import { clsx } from 'clsx'
 
 export default function ObservabilityPage() {
@@ -26,7 +29,7 @@ export default function ObservabilityPage() {
       setMetrics(met)
       setSystems(sys)
     } catch (e: any) {
-      setError(e.message)
+      setError(e.message ?? 'Unable to reach the API. Check that the backend is running.')
     } finally {
       setLoading(false)
     }
@@ -50,36 +53,48 @@ export default function ObservabilityPage() {
   const rows = Object.values(latestBySystem)
 
   return (
-    <AppShell title="Observability">
+    <AppShell title="Telemetry & Metrics">
       <div className="space-y-6">
+        <PageHeader
+          title="Telemetry & Metrics"
+          description="Per-system observability data — latency, error rates, heartbeat age, and alert counts."
+          count={rows.length}
+          countLabel="systems reporting"
+          actions={
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-100 transition-colors px-3 py-2 rounded-md hover:bg-gray-700 border border-transparent hover:border-gray-600"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          }
+        />
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Spinner size="lg" />
           </div>
         ) : error ? (
-          <div className="bg-red-900/20 border border-red-700/50 text-red-400 rounded-lg p-6 text-sm">
-            Failed to load metrics: {error}
-          </div>
+          <PageError
+            title="Could not load telemetry"
+            message={error}
+            onRetry={load}
+          />
         ) : (
           <>
             {/* Latency Chart */}
             <Card>
               <CardHeader>
                 <CardTitle>Latency Over Time (All Systems)</CardTitle>
-                <button
-                  onClick={load}
-                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-100 transition-colors"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh
-                </button>
               </CardHeader>
               {metrics.length > 0 ? (
                 <LatencyChart metrics={metrics} />
               ) : (
-                <div className="h-48 flex items-center justify-center text-gray-600 text-sm">
-                  No metric data available
-                </div>
+                <EmptyState
+                  icon={Activity}
+                  title="No telemetry data"
+                  description="No metrics have been ingested yet. Ensure the backend seed data has been applied."
+                />
               )}
             </Card>
 
@@ -146,7 +161,11 @@ export default function ObservabilityPage() {
                   </tbody>
                 </table>
                 {rows.length === 0 && (
-                  <div className="text-center py-12 text-gray-500">No metrics available.</div>
+                  <EmptyState
+                    icon={Activity}
+                    title="No per-system metrics"
+                    description="Metrics will appear here once systems start reporting telemetry."
+                  />
                 )}
               </div>
             </Card>

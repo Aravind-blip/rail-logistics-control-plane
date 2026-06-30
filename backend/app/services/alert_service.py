@@ -5,10 +5,20 @@ from sqlalchemy import select
 from fastapi import HTTPException, status
 from app.models.alert import Alert, AlertStatus
 from app.models.audit_log import AuditLog
+from app.models.system import DistributedSystem
 from app.schemas.alert import AlertCreate
 
 
 async def create_alert(db: AsyncSession, data: AlertCreate) -> Alert:
+    # Validate source system exists
+    sys_result = await db.execute(
+        select(DistributedSystem).where(DistributedSystem.id == data.source_system_id)
+    )
+    if not sys_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"source_system_id '{data.source_system_id}' does not reference a known system",
+        )
     alert = Alert(
         id=str(uuid.uuid4()),
         **data.model_dump(),

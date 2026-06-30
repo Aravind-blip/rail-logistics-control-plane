@@ -10,8 +10,11 @@ import SystemsTable from '@/components/tables/SystemsTable'
 import Card from '@/components/ui/Card'
 import Select from '@/components/ui/Select'
 import Spinner from '@/components/ui/Spinner'
+import PageError from '@/components/ui/PageError'
+import PageHeader from '@/components/ui/PageHeader'
+import EmptyState from '@/components/ui/EmptyState'
 import wsManager from '@/lib/websocket'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Server } from 'lucide-react'
 
 const ENV_OPTIONS = [
   { value: '', label: 'All Environments' },
@@ -40,8 +43,9 @@ export default function SystemsPage() {
     try {
       const data = await getSystems()
       setSystems(data)
+      setError(null)
     } catch (e: any) {
-      setError(e.message)
+      setError(e.message ?? 'Unable to reach the API. Check that the backend is running.')
     } finally {
       setLoading(false)
     }
@@ -65,39 +69,58 @@ export default function SystemsPage() {
   return (
     <AppShell title="Distributed Systems">
       <div className="space-y-4">
-        {/* Filters */}
-        <div className="flex items-center gap-4 flex-wrap">
+        <PageHeader
+          title="Distributed Systems"
+          description="Live inventory of all registered microservices, edge gateways, and data center workers."
+          count={filtered.length}
+          countLabel="systems"
+          actions={
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-100 transition-colors px-3 py-2 rounded-md hover:bg-gray-700 border border-transparent hover:border-gray-600"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          }
+        />
+
+        <div className="flex items-center gap-3 flex-wrap">
           <Select
             options={ENV_OPTIONS}
             value={envFilter}
             onChange={(e) => setEnvFilter(e.target.value)}
-            placeholder=""
             className="w-48"
           />
           <Select
             options={STATUS_OPTIONS}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            placeholder=""
             className="w-48"
           />
-          <button
-            onClick={load}
-            className="ml-auto flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-100 transition-colors px-3 py-2 rounded-md hover:bg-gray-700"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
-          <span className="text-xs text-gray-500">{filtered.length} systems</span>
         </div>
 
         <Card padding={false}>
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Spinner />
+              <Spinner size="lg" />
             </div>
           ) : error ? (
-            <div className="p-6 text-red-400 text-sm">Failed to load systems: {error}</div>
+            <PageError
+              title="Could not load systems"
+              message={error}
+              onRetry={load}
+            />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={Server}
+              title={envFilter || statusFilter ? 'No systems match the current filters' : 'No systems registered'}
+              description={
+                envFilter || statusFilter
+                  ? 'Try adjusting the environment or status filter.'
+                  : 'No distributed systems have been registered in this environment.'
+              }
+            />
           ) : (
             <SystemsTable systems={filtered} />
           )}

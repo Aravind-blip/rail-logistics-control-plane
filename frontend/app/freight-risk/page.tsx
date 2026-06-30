@@ -9,7 +9,10 @@ import AppShell from '@/components/layout/AppShell'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import { format } from 'date-fns'
-import { RefreshCw, AlertTriangle } from 'lucide-react'
+import PageError from '@/components/ui/PageError'
+import PageHeader from '@/components/ui/PageHeader'
+import EmptyState from '@/components/ui/EmptyState'
+import { RefreshCw, AlertTriangle, TrendingUp } from 'lucide-react'
 import { clsx } from 'clsx'
 
 function riskColor(prob: number) {
@@ -50,7 +53,7 @@ export default function FreightRiskPage() {
       setRisks(r)
       setSystems(s)
     } catch (e: any) {
-      setError(e.message)
+      setError(e.message ?? 'Unable to reach the API. Check that the backend is running.')
     } finally {
       setLoading(false)
     }
@@ -67,16 +70,39 @@ export default function FreightRiskPage() {
   const medRiskCount = risks.filter((r) => r.delay_probability >= 0.4 && r.delay_probability < 0.7).length
 
   return (
-    <AppShell title="Freight Risk Assessment">
+    <AppShell title="Freight Risk Intel">
       <div className="space-y-6">
+        <PageHeader
+          title="Freight Risk Intel"
+          description="ML-derived delay probability scores and recommended actions for active freight corridors."
+          count={risks.length}
+          countLabel="corridors assessed"
+          actions={
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-100 transition-colors px-3 py-2 rounded-md hover:bg-gray-700 border border-transparent hover:border-gray-600"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          }
+        />
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Spinner size="lg" />
           </div>
         ) : error ? (
-          <div className="bg-red-900/20 border border-red-700/50 text-red-400 rounded-lg p-6 text-sm">
-            Failed to load freight risks: {error}
-          </div>
+          <PageError
+            title="Could not load freight risk data"
+            message={error}
+            onRetry={load}
+          />
+        ) : risks.length === 0 ? (
+          <EmptyState
+            icon={TrendingUp}
+            title="No risk assessments available"
+            description="Freight risk data will appear here once corridor assessments have been computed."
+          />
         ) : (
           <>
             {/* Summary banners */}
@@ -104,13 +130,6 @@ export default function FreightRiskPage() {
                 <h3 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">
                   Corridor Risk Assessment
                 </h3>
-                <button
-                  onClick={load}
-                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-100 transition-colors"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh
-                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -168,9 +187,6 @@ export default function FreightRiskPage() {
                       })}
                   </tbody>
                 </table>
-                {risks.length === 0 && (
-                  <div className="text-center py-12 text-gray-500">No freight risk data available.</div>
-                )}
               </div>
             </Card>
           </>

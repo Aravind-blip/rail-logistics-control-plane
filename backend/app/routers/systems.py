@@ -1,13 +1,12 @@
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.models.system import DistributedSystem
+from app.models.system import DistributedSystem, EnvironmentType, SystemStatus
 from app.models.audit_log import AuditLog
 from app.schemas.system import SystemCreate, SystemRead, SystemUpdate
-from app.auth.jwt import get_current_user
 from app.auth.rbac import require_admin, require_any_role
 from app.models.user import User
 
@@ -16,10 +15,19 @@ router = APIRouter(prefix="/api/systems", tags=["systems"])
 
 @router.get("/", response_model=list[SystemRead])
 async def list_systems(
+    environment: EnvironmentType | None = None,
+    sys_status: SystemStatus | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Records to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role()),
 ):
-    result = await db.execute(select(DistributedSystem).order_by(DistributedSystem.name))
+    query = select(DistributedSystem).order_by(DistributedSystem.name).limit(limit).offset(offset)
+    if environment:
+        query = query.where(DistributedSystem.environment == environment)
+    if sys_status:
+        query = query.where(DistributedSystem.status == sys_status)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 

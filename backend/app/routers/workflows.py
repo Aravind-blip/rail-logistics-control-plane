@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -7,7 +7,6 @@ from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowApprove, 
 from app.auth.rbac import require_any_role, require_operator_or_admin, require_admin
 from app.models.user import User
 from app.services import workflow_service
-from fastapi import status as http_status
 
 router = APIRouter(prefix="/api/workflows", tags=["workflows"])
 
@@ -15,10 +14,12 @@ router = APIRouter(prefix="/api/workflows", tags=["workflows"])
 @router.get("/", response_model=list[WorkflowRead])
 async def list_workflows(
     wf_status: WorkflowStatus | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Records to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role()),
 ):
-    query = select(Workflow).order_by(Workflow.created_at.desc())
+    query = select(Workflow).order_by(Workflow.created_at.desc()).limit(limit).offset(offset)
     if wf_status:
         query = query.where(Workflow.status == wf_status)
     result = await db.execute(query)

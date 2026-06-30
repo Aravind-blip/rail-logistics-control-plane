@@ -1,8 +1,11 @@
 import structlog
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from app.config import settings
 from app.database import init_db, AsyncSessionLocal
@@ -76,6 +79,28 @@ app.include_router(dashboard.router)
 app.include_router(websocket.router)
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    errors = []
+    for err in exc.errors():
+        loc = " → ".join(str(l) for l in err["loc"] if l != "body")
+        errors.append({"field": loc or "request", "message": err["msg"]})
+    logger.warning("request_validation_error", path=request.url.path, errors=errors)
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Request validation failed", "errors": errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("unhandled_exception", path=request.url.path, error=str(exc), exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred. Please try again or contact support."},
+    )
+
+
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "rail-logistics-control-plane"}
+    return {"status": "ok", "service": "rail-logistics-control-plane", "version": "1.0.0"}

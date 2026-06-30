@@ -71,7 +71,7 @@ export function getWorkflows(params?: Record<string, string>): Promise<Workflow[
   return apiFetch<Workflow[]>(`/workflows${qs}`)
 }
 
-export function createWorkflow(data: { workflow_type: string; risk_level: string }): Promise<Workflow> {
+export function createWorkflow(data: { workflow_type: string; risk_level: string; description?: string }): Promise<Workflow> {
   return apiFetch<Workflow>('/workflows', {
     method: 'POST',
     body: JSON.stringify(data),
